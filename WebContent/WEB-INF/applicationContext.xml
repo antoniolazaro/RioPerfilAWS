@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:flex="http://www.springframework.org/schema/flex" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+			http://www.springframework.org/schema/flex
+			http://www.springframework.org/schema/flex/spring-flex-1.0.xsd
+			http://www.springframework.org/schema/aop
+			http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context-3.0.xsd
+			http://www.springframework.org/schema/tx 
+			http://www.springframework.org/schema/tx/spring-tx-3.0.xsd">
+
+	<context:annotation-config />
+	<context:component-scan base-package="br.com.rio.app.riolegal.dao" />
+	<context:component-scan base-package="br.com.rio.app.riolegal.service" />
+
+	<flex:message-broker>
+		<flex:config-processor ref="ormConfigProcessor" />
+	</flex:message-broker>
+	
+	<bean name="contadorAcessoFilter" class="br.com.rio.app.riolegal.ContadorAcessoFilter"></bean>
+
+	<bean id="ormConfigProcessor"
+		class="org.springframework.flex.core.io.HibernateConfigProcessor">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="aspectException" class="br.com.rio.app.riolegal.exception.AspectException" />
+
+	<aop:config>
+		<aop:aspect ref="aspectException">
+			<aop:pointcut id="controleException"
+				expression="execution(* br.com.rio.app.riolegal.service.*Service.*(..))" />
+			<aop:around pointcut-ref="controleException" method="checkException" />
+		</aop:aspect>
+	</aop:config>
+
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="find*" propagation="SUPPORTS" />
+			<tx:method name="get*" propagation="SUPPORTS" />
+			<tx:method name="set*" propagation="SUPPORTS" />
+			<tx:method name="save" propagation="REQUIRED" read-only="false" />
+			<tx:method name="autenticarUsuario" propagation="REQUIRED" read-only="false" />
+			<tx:method name="remove" propagation="REQUIRED" read-only="false" />
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config>
+		<aop:pointcut id="serviceMethods"
+			expression="execution(* br.com.rio.app.riolegal.service.*Service.*(..))" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="serviceMethods" />
+	</aop:config>
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="packagesToScan">
+			<list>
+				<value>br.com.rio.app.riolegal.vo</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.current_session_context_class">org.hibernate.context.ThreadLocalSessionContext
+				</prop>
+				<prop key="hibernate.show_sql">false</prop>
+				<prop key="hibernate.format_sql">false</prop>
+			</props>
+		</property>
+	</bean>
+
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location">
+			<value>/WEB-INF/jdbc.properties</value>
+		</property>
+	</bean>
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName">
+			<value>${jdbc.driverClassName}</value>
+		</property>
+		<property name="url">
+			<value>${jdbc.url}</value>
+		</property>
+		<!-- property name="username">
+			<value>${jdbc.username}</value>
+		</property>
+		<property name="password">
+			<value>${jdbc.password}</value>
+		</property-->
+		<property name="defaultAutoCommit">
+			<value>${jdbc.defaultAutoCommit}</value>
+		</property>
+	</bean>
+
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="username" value="sac=rioperfil.com.br" />
+		<property name="password" value="421421M@y" />
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.smtp.from">sac@rioperfil.com.br</prop>
+				<prop key="mail.smtp.user">sac=rioperfil.com.br</prop>
+				<prop key="mail.smtp.password">421421M@y</prop>
+				<prop key="mail.smtp.host">smtp.rioperfil.com.br</prop>
+				<prop key="mail.smtp.port">587</prop>
+				<prop key="mail.smtp.auth">true</prop>
+				<prop key="mail.smtp.starttls.enable">true</prop>
+				<prop key="mail.smtp.quitwait">false</prop>
+				<prop key="mail.debug">false</prop>
+			</props>
+		</property>
+	</bean>
+
+	<bean id="simpleMailMessage" class="org.springframework.mail.SimpleMailMessage">
+		<property name="from">
+			<value>sac@rioperfil.com.br</value>
+		</property>
+
+	</bean>
+</beans>
